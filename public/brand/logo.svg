@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="halemap logo mark">
+  <defs>
+    <linearGradient id="leafGrad" x1="120" y1="320" x2="260" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0ea5a6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Leaf -->
+  <ellipse cx="170" cy="320" rx="120" ry="86" transform="rotate(-25 170 320)" fill="url(#leafGrad)"/>
+
+  <!-- Outline mark (single-stroke feel) -->
+  <path
+    d="M246 374
+       C278 300 300 258 328 214
+       C360 162 392 132 418 136
+       C450 141 458 188 442 228
+       C425 271 394 287 358 275
+       C338 269 322 260 306 252
+       C294 246 286 249 279 264
+       C268 288 258 319 248 360"
+    fill="none"
+    stroke="#6b635c"
+    stroke-width="34"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
+

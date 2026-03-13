@@ -1,12 +1,17 @@
 import { UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import MapWrapper from "@/components/MapWrapper";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function ProjectMapPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
   const { projectId } = await params;
 
   return (

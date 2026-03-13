@@ -1,6 +1,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import type { Project } from "@/types";
 import HomeCreateProject from "@/components/HomeCreateProject";
@@ -8,8 +9,7 @@ import HomeCreateProject from "@/components/HomeCreateProject";
 export default async function Home() {
   const { userId } = await auth();
   if (!userId) {
-    // Protected by middleware; this is a safety net.
-    return null;
+    redirect("/sign-in");
   }
 
   const { data: memberProjects, error: memberError } = await supabase

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import type { Project } from "@/types";
 import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import DiscoverJoinButton from "@/components/DiscoverJoinButton";
 
@@ -22,7 +23,7 @@ function visibilityLabel(v?: Project["visibility"]) {
 
 export default async function DiscoverPage() {
   const { userId } = await auth();
-  if (!userId) return null;
+  if (!userId) redirect("/sign-in");
 
   const { data: memberRows, error: memberError } = await supabase
     .from("project_members")

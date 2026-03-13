@@ -1,6 +1,7 @@
-export default function RootPage() {
-  // Redirect is handled in `middleware.ts`:
-  // - signed-in: "/" -> "/home"
-  // - signed-out: "/" -> "/about"
-  return null;
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+
+export default async function RootPage() {
+  const { userId } = await auth();
+  redirect(userId ? "/home" : "/about");
 }

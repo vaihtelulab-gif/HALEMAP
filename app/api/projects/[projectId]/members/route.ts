@@ -51,6 +51,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   const body = await request.json();
   const { email, role } = body; // Invite by email
   const requestedRole = (role || 'member') as 'admin' | 'member' | 'guest';
+  const normalizedEmail =
+    typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!normalizedEmail) {
+    return NextResponse.json({ error: "Missing email" }, { status: 400 });
+  }
 
   // For guest invite, project must be collaborate
   if (requestedRole === 'guest') {
@@ -70,11 +75,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   const { data: user, error: userError } = await supabase
     .from('users')
     .select('id')
-    .eq('email', email)
+    .eq('email', normalizedEmail)
     .single();
 
   if (userError || !user) {
-    return NextResponse.json({ error: 'User not found. They must sign up first.' }, { status: 404 });
+    return NextResponse.json(
+      {
+        code: "USER_NOT_FOUND",
+        error:
+          "招待するユーザーが見つかりません。先にアプリにログイン（サインアップ）してもらう必要があります。",
+      },
+      { status: 404 },
+    );
   }
 
   // If inviting as guest, ensure the account isn't already in other projects

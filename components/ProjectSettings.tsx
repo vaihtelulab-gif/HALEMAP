@@ -75,6 +75,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
   const [tempRange, setTempRange] = useState<{ ns: number; ew: number }>({ ns: 1000, ew: 1000 });
 
   const router = useRouter();
+  const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/join` : "/join";
 
   useEffect(() => {
     if (isOpen) {
@@ -267,8 +268,14 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
         fetchMembers();
         alert('メンバーを追加しました');
       } else {
-        const data = await res.json();
-        alert(data.error || '招待に失敗しました');
+        const data = (await res.json()) as { error?: string; code?: string };
+        if (data.code === "USER_NOT_FOUND") {
+          alert(
+            `${data.error}\n\n招待コード参加も使えます：\n${joinUrl}`,
+          );
+        } else {
+          alert(data.error || '招待に失敗しました');
+        }
       }
     } catch (error) {
       console.error('Error inviting member:', error);
@@ -615,7 +622,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
                     </button>
                   </div>
                   <div className="text-sm text-gray-600 mb-3">
-                    参加者は `http://localhost:3000/join` でコード入力して参加できます。
+                    参加者は `{joinUrl}` でコード入力して参加できます。
                   </div>
                   {inviteCodes.length === 0 ? (
                     <div className="text-sm text-gray-500">有効な招待コードがありません。</div>

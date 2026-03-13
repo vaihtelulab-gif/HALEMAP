@@ -2,6 +2,22 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabaseClient";
 
+async function ensureUserRow(userId: string) {
+  // This endpoint is called by admins reviewing requests; it may approve a user
+  // that has never been synced into `users` yet in this environment.
+  const { data, error } = await supabase.from("users").select("id").eq("id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data?.id) return;
+
+  // Minimal placeholder to satisfy FK constraints; user can be enriched on first login elsewhere.
+  const { error: upsertError } = await supabase.from("users").upsert({
+    id: userId,
+    email: "",
+    display_name: "",
+  });
+  if (upsertError) throw new Error(upsertError.message);
+}
+
 async function checkAdmin(userId: string, projectId: string) {
   const { data, error } = await supabase
     .from("project_members")
@@ -99,6 +115,13 @@ export async function PUT(
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
   if (body.action === "approve") {
+    try {
+      await ensureUserRow(reqRow.user_id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Failed to sync user: ${message}` }, { status: 500 });
+    }
+
     const { error: addError } = await supabase.from("project_members").insert([
       {
         project_id: projectId,

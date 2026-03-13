@@ -1,14 +1,38 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabaseClient";
 
 function normalizeCode(code: string) {
   return code.trim().toUpperCase().replace(/\s+/g, "");
 }
 
+async function ensureUserRow(userId: string) {
+  const user = await currentUser();
+  if (!user) return;
+
+  const email = user.emailAddresses[0]?.emailAddress || "";
+  const displayName = user.firstName
+    ? `${user.firstName} ${user.lastName || ""}`.trim()
+    : user.username || email;
+
+  const { error } = await supabase.from("users").upsert({
+    id: userId,
+    email,
+    display_name: displayName,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    await ensureUserRow(userId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Failed to sync user: ${message}` }, { status: 500 });
+  }
 
   const body = (await request.json()) as { code?: string };
   const raw = body.code;

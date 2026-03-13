@@ -269,7 +269,18 @@ export default function Map({
         setNewSpotPos(null);
         onAddModeChange(false); // 登録完了したらモード終了
       } else {
-        alert('保存に失敗しました');
+        let details = '';
+        try {
+          const data = (await res.json()) as { error?: string; message?: string };
+          details = data.error || data.message || JSON.stringify(data);
+        } catch {
+          try {
+            details = await res.text();
+          } catch {
+            details = '';
+          }
+        }
+        alert(`保存に失敗しました (${res.status})${details ? `\n${details}` : ''}`);
       }
     } catch (error) {
       console.error('Error saving spot:', error);
@@ -349,7 +360,18 @@ export default function Map({
         setReportDeadline('');
         setReportFile(null);
       } else {
-        alert('報告に失敗しました');
+        let details = '';
+        try {
+          const data = (await res.json()) as { error?: string; message?: string };
+          details = data.error || data.message || JSON.stringify(data);
+        } catch {
+          try {
+            details = await res.text();
+          } catch {
+            details = '';
+          }
+        }
+        alert(`報告に失敗しました (${res.status})${details ? `\n${details}` : ''}`);
       }
     } catch (error) {
       console.error('Error reporting:', error);
@@ -390,7 +412,9 @@ export default function Map({
       center={[35.6895, 139.6917]} // 都庁前
       zoom={13}
       scrollWheelZoom={true}
-      className="h-screen w-full z-0"
+      // Ensure Leaflet stays behind overlay UI (stacking context).
+      className="h-screen w-full relative z-0"
+      style={{ zIndex: 0 }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

@@ -12,7 +12,7 @@ export default async function ProjectMapPage({
   return (
     <main className="relative h-screen w-full overflow-hidden">
       {/* ヘッダー（オーバーレイ） */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+      <div className="absolute top-4 right-4 z-[1100] flex items-center gap-2 pointer-events-auto">
         <Link
           href={`/projects/${projectId}`}
           className="bg-white px-3 py-2 rounded-full shadow-md text-sm font-bold text-teal-800 hover:bg-teal-50 border border-teal-100"

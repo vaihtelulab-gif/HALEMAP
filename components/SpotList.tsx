@@ -15,6 +15,7 @@ export default function SpotList({ isOpen, onClose, projectId }: SpotListProps) 
   const [spots, setSpots] = useState<Spot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -24,14 +25,31 @@ export default function SpotList({ isOpen, onClose, projectId }: SpotListProps) 
 
   const fetchSpots = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const res = await fetch(`/api/spots?project_id=${projectId}`);
       if (res.ok) {
         const data = await res.json();
         setSpots(data);
+      } else {
+        let details = '';
+        try {
+          const data = (await res.json()) as { error?: string; message?: string };
+          details = data.error || data.message || JSON.stringify(data);
+        } catch {
+          try {
+            details = await res.text();
+          } catch {
+            details = '';
+          }
+        }
+        setSpots([]);
+        setErrorMessage(`取得に失敗しました (${res.status})${details ? `: ${details}` : ''}`);
       }
     } catch (error) {
       console.error('Failed to fetch spots:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      setErrorMessage(`取得に失敗しました: ${message}`);
     } finally {
       setIsLoading(false);
     }
@@ -112,14 +130,14 @@ export default function SpotList({ isOpen, onClose, projectId }: SpotListProps) 
       {/* オーバーレイ (モバイル用) */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-30 z-[1000] sm:hidden"
+          className="fixed inset-0 bg-black bg-opacity-30 z-[1200] sm:hidden"
           onClick={onClose}
         />
       )}
       
       {/* サイドバー本体 */}
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[1001] flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[1201] flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -185,6 +203,10 @@ export default function SpotList({ isOpen, onClose, projectId }: SpotListProps) 
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {errorMessage}
             </div>
           ) : filteredSpots.length === 0 ? (
             <div className="text-center py-8">

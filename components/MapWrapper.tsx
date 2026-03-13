@@ -52,13 +52,13 @@ export default function MapWrapper({ projectId }: { projectId: string }) {
       
       {/* 登録モード時の案内表示 */}
       {isAddMode && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[1000] bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-bold animate-bounce pointer-events-none">
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[1100] bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-bold animate-bounce pointer-events-none">
           地図上の登録したい場所をタップしてください
         </div>
       )}
 
       {/* アクションボタン群 */}
-      <div className="absolute bottom-8 right-4 z-[999] flex flex-col gap-3">
+      <div className="absolute bottom-8 right-4 z-[1100] flex flex-col gap-3 pointer-events-auto">
         {/* プロジェクト設定ボタン */}
         <button 
           onClick={() => setActiveSidebar('settings')}

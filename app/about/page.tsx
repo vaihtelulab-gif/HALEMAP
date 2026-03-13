@@ -27,6 +27,12 @@ export default function AboutPage() {
               </Link>
             ) : (
               <>
+                <Link
+                  href="/guide"
+                  className="px-3 py-2 rounded-md border border-teal-200 bg-white hover:bg-teal-50 text-sm"
+                >
+                  使い方
+                </Link>
                 <SignInButton mode="modal">
                   <button className="px-3 py-2 rounded-md border border-teal-200 bg-white hover:bg-teal-50 text-sm">
                     ログイン

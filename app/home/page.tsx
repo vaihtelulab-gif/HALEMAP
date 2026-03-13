@@ -114,10 +114,10 @@ export default async function Home() {
               </Link>
               <HomeCreateProject />
               <Link
-                href="/about"
+                href="/guide"
                 className="text-sm text-gray-500 hover:text-gray-700 hover:underline"
               >
-                サービス全体の説明を見る
+                使い方・機能を見る
               </Link>
             </div>
           </div>

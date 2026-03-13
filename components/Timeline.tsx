@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Report } from '@/types';
 
 interface TimelineProps {
@@ -13,40 +13,79 @@ interface TimelineProps {
 export default function Timeline({ isOpen, onClose, spotId, projectId }: TimelineProps) {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const cache = useMemo(() => new Map<string, Report[]>(), []);
 
   useEffect(() => {
-    if (isOpen) {
-      fetchReports();
-    }
-  }, [isOpen, spotId, projectId]);
+    if (!isOpen) return;
 
-  const fetchReports = async () => {
-    setIsLoading(true);
-    try {
-      let url = '/api/timeline';
-      const params = new URLSearchParams();
-      
-      if (spotId) {
-        params.append('spot_id', spotId);
-      } else {
-        params.append('project_id', projectId);
-      }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setReports(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch timeline:', error);
-    } finally {
+    const key = spotId ? `spot:${spotId}` : `project:${projectId}`;
+    const cached = cache.get(key);
+    if (cached) {
+      setReports(cached);
+      setErrorMessage(null);
       setIsLoading(false);
+      return;
     }
-  };
+
+    // Cancel any in-flight request (rapid open/close or switching spotId).
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const fetchReports = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        let url = '/api/timeline';
+        const params = new URLSearchParams();
+
+        if (spotId) {
+          params.append('spot_id', spotId);
+        } else {
+          params.append('project_id', projectId);
+        }
+
+        url += `?${params.toString()}`;
+
+        const res = await fetch(url, { signal: controller.signal });
+        if (res.ok) {
+          const data = (await res.json()) as Report[];
+          cache.set(key, data);
+          setReports(data);
+        } else {
+          let details = '';
+          try {
+            const data = (await res.json()) as { error?: string; message?: string };
+            details = data.error || data.message || JSON.stringify(data);
+          } catch {
+            try {
+              details = await res.text();
+            } catch {
+              details = '';
+            }
+          }
+          setReports([]);
+          setErrorMessage(`取得に失敗しました (${res.status})${details ? `: ${details}` : ''}`);
+        }
+      } catch (error) {
+        // Ignore abort errors (expected when switching quickly).
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error('Failed to fetch timeline:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        setErrorMessage(`取得に失敗しました: ${message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchReports();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isOpen, spotId, projectId]);
 
   const handleReaction = async (reportId: string, emoji: string) => {
     // Optimistic update
@@ -77,12 +116,14 @@ export default function Timeline({ isOpen, onClose, spotId, projectId }: Timelin
       if (!res.ok) {
         // Revert on error
         console.error('Failed to update reaction');
-        // Fetch to sync state
-        fetchReports();
+        // Cache may now be stale; clear and let next open refetch.
+        const key = spotId ? `spot:${spotId}` : `project:${projectId}`;
+        cache.delete(key);
       }
     } catch (error) {
       console.error('Error updating reaction:', error);
-      fetchReports();
+      const key = spotId ? `spot:${spotId}` : `project:${projectId}`;
+      cache.delete(key);
     }
   };
 
@@ -101,14 +142,14 @@ export default function Timeline({ isOpen, onClose, spotId, projectId }: Timelin
       {/* オーバーレイ (モバイル用) */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-30 z-[1000] sm:hidden"
+          className="fixed inset-0 bg-black bg-opacity-30 z-[1200] sm:hidden"
           onClick={onClose}
         />
       )}
       
       {/* サイドバー本体 */}
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[1001] flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[1201] flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
@@ -143,6 +184,10 @@ export default function Timeline({ isOpen, onClose, spotId, projectId }: Timelin
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {errorMessage}
             </div>
           ) : reports.length === 0 ? (
             <p className="text-center text-gray-500 py-8">まだ報告がありません</p>

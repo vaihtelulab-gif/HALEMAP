@@ -8,7 +8,15 @@ function normalizeCode(code: string) {
 
 async function ensureUserRow(userId: string) {
   const user = await currentUser();
-  if (!user) return;
+  if (!user) {
+    const { error } = await supabase.from("users").upsert({
+      id: userId,
+      email: "",
+      display_name: "",
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
 
   const email = user.emailAddresses[0]?.emailAddress || "";
   const displayName = user.firstName

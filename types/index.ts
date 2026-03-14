@@ -45,6 +45,7 @@ export type Project = {
   end_at?: string;
   thumbnail_url?: string;
   visibility?: 'public' | 'private' | 'secret' | 'collaborate';
+  open_access?: boolean;
   map_config?: {
     center: { lat: number; lng: number };
     range: { ns: number; ew: number }; // meters

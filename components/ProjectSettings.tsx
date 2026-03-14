@@ -54,6 +54,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
   const [projectEndAt, setProjectEndAt] = useState('');
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [projectVisibility, setProjectVisibility] = useState<'public' | 'private' | 'secret' | 'collaborate'>('private');
+  const [projectOpenAccess, setProjectOpenAccess] = useState(false);
   const [mapConfig, setMapConfig] = useState<MapConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingThumbnail, setIsUploadingThumbnail] = useState(false);
@@ -128,6 +129,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
         end_date?: string | null; // legacy
         thumbnail_url?: string | null;
         visibility?: 'public' | 'private' | 'secret' | 'collaborate' | null;
+        open_access?: boolean | null;
         map_config?: MapConfig;
       }>;
       const project = projects.find((p) => p.id === projectId);
@@ -143,6 +145,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
         );
         setThumbnailUrl(project.thumbnail_url || '');
         setProjectVisibility(project.visibility || 'private');
+        setProjectOpenAccess(Boolean(project.open_access));
         if (project.map_config) {
           setMapConfig(project.map_config);
           setTempCenter(project.map_config.center);
@@ -331,6 +334,7 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
           start_at: projectStartAt ? new Date(projectStartAt).toISOString() : null,
           end_at: projectEndAt ? new Date(projectEndAt).toISOString() : null,
           visibility: projectVisibility,
+          open_access: projectVisibility === "public" ? projectOpenAccess : false,
         }),
       });
       if (res.ok) {
@@ -764,6 +768,32 @@ export default function ProjectSettings({ projectId, isOpen, onClose }: ProjectS
                     <p className="text-xs text-gray-500 mt-1">
                       シークレットは「プロジェクトを探す」に表示されません。コラボレートではゲスト招待が可能です。
                     </p>
+                  </div>
+
+                  <div className="mb-6 rounded-lg border border-teal-100 bg-teal-50 p-4">
+                    <div className="text-sm font-semibold text-teal-900">
+                      オープンプロジェクト（ログインなし操作）
+                    </div>
+                    <div className="mt-2 text-xs text-teal-900/80">
+                      ONにすると、未ログインでも「スポット登録」「貼る/はがす報告」ができるようになります。
+                      <br />
+                      安全のため <span className="font-semibold">パブリック</span> のときだけ有効です。
+                    </div>
+                    <label className="mt-3 inline-flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-teal-700"
+                        checked={projectVisibility === "public" ? projectOpenAccess : false}
+                        onChange={(e) => setProjectOpenAccess(e.target.checked)}
+                        disabled={projectVisibility !== "public"}
+                      />
+                      ログインなしで操作を許可する
+                    </label>
+                    {projectVisibility !== "public" && (
+                      <div className="mt-2 text-xs text-teal-900/70">
+                        公開範囲がパブリック以外の場合はONにできません。
+                      </div>
+                    )}
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">プロジェクト名</label>

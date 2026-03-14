@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 // Helper to check if user is admin/owner
 async function checkAdmin(userId: string, projectId: string) {
@@ -17,15 +17,87 @@ async function checkAdmin(userId: string, projectId: string) {
 
 export async function POST(request: Request) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const body = await request.json();
   const { spot_id, type, photo_url, memo, poster_name, removal_deadline } = body;
 
   if (!spot_id || !type) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Determine actor (logged-in user or anonymous when project is open)
+  let actorId = userId || "";
+  let shouldSetAnonCookie = false;
+  let anonCookieValue = "";
+
+  if (!actorId) {
+    const { data: spot, error: spotError } = await supabase
+      .from("spots")
+      .select("project_id")
+      .eq("id", spot_id)
+      .maybeSingle();
+
+    if (spotError) {
+      return NextResponse.json({ error: spotError.message }, { status: 500 });
+    }
+
+    const projectId = spot?.project_id;
+    if (!projectId) {
+      return NextResponse.json({ error: "Spot not found" }, { status: 404 });
+    }
+
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("visibility, open_access")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (projectError) {
+      return NextResponse.json({ error: projectError.message }, { status: 500 });
+    }
+
+    const isOpenProject = project?.visibility === "public" && Boolean(project?.open_access);
+    if (!isOpenProject) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const cookieHeader = request.headers.get("cookie") || "";
+    const match = cookieHeader.match(/(?:^|;\s*)hm_anon=([^;]+)/);
+    const existing = match ? decodeURIComponent(match[1]) : "";
+    const nextId = existing || `anon_${crypto.randomUUID()}`;
+
+    actorId = nextId;
+    if (!existing) {
+      shouldSetAnonCookie = true;
+      anonCookieValue = nextId;
+    }
+
+    const { error: anonUserError } = await supabase.from("users").upsert({
+      id: actorId,
+      email: "",
+      display_name: "匿名",
+    });
+
+    if (anonUserError) {
+      return NextResponse.json({ error: anonUserError.message }, { status: 500 });
+    }
+  } else {
+    // Best-effort: ensure FK-compatible users row exists
+    try {
+      const user = await currentUser();
+      const email = user?.emailAddresses?.[0]?.emailAddress || "";
+      const displayName = user?.firstName
+        ? `${user.firstName} ${user.lastName || ""}`.trim()
+        : user?.username || email;
+
+      const { error: userError } = await supabase.from("users").upsert({
+        id: actorId,
+        email,
+        display_name: displayName,
+      });
+      if (userError) return NextResponse.json({ error: userError.message }, { status: 500 });
+    } catch {
+      // If Clerk lookup fails transiently, keep going; DB may already have the user row
+    }
   }
 
   // 1. レポート（作業記録）を作成
@@ -39,7 +111,7 @@ export async function POST(request: Request) {
         memo,
         poster_name: type === 'post' ? poster_name : null,
         removal_deadline: type === 'post' ? (removal_deadline || null) : null,
-        performed_by: userId,
+        performed_by: actorId,
       },
     ]);
 
@@ -68,7 +140,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: spotError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  const res = NextResponse.json({ success: true });
+  if (shouldSetAnonCookie) {
+    res.cookies.set({
+      name: "hm_anon",
+      value: anonCookieValue,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return res;
 }
 
 export async function DELETE(request: Request) {

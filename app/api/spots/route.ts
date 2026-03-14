@@ -38,33 +38,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Clerkのユーザー情報を取得して、Supabaseのusersテーブルと同期する
-  const user = await currentUser();
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 401 });
-  }
-
-  const email = user.emailAddresses[0]?.emailAddress || '';
-  const displayName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || email;
-
-  const { error: userError } = await supabase
-    .from('users')
-    .upsert({
-      id: userId,
-      email: email,
-      display_name: displayName,
-    });
-
-  if (userError) {
-    console.error('Error syncing user:', userError);
-    return NextResponse.json({ error: 'Failed to sync user' }, { status: 500 });
-  }
-
-  // スポットの保存
   const body = await request.json();
   const { name, latitude, longitude, status, memo, project_id } = body;
 
@@ -76,6 +49,71 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
   }
 
+  // Determine actor (logged-in user or anonymous when project is open)
+  let actorId = userId || "";
+  let shouldSetAnonCookie = false;
+  let anonCookieValue = "";
+
+  if (!actorId) {
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("visibility, open_access")
+      .eq("id", project_id)
+      .maybeSingle();
+
+    if (projectError) {
+      return NextResponse.json({ error: projectError.message }, { status: 500 });
+    }
+
+    const isOpenProject = project?.visibility === "public" && Boolean(project?.open_access);
+    if (!isOpenProject) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const cookieHeader = request.headers.get("cookie") || "";
+    const match = cookieHeader.match(/(?:^|;\s*)hm_anon=([^;]+)/);
+    const existing = match ? decodeURIComponent(match[1]) : "";
+    const nextId = existing || `anon_${crypto.randomUUID()}`;
+
+    actorId = nextId;
+    if (!existing) {
+      shouldSetAnonCookie = true;
+      anonCookieValue = nextId;
+    }
+
+    const { error: anonUserError } = await supabase.from("users").upsert({
+      id: actorId,
+      email: "",
+      display_name: "匿名",
+    });
+
+    if (anonUserError) {
+      return NextResponse.json({ error: anonUserError.message }, { status: 500 });
+    }
+  } else {
+    // Clerkのユーザー情報を取得して、Supabaseのusersテーブルと同期する
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
+    }
+
+    const email = user.emailAddresses[0]?.emailAddress || '';
+    const displayName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username || email;
+
+    const { error: userError } = await supabase
+      .from('users')
+      .upsert({
+        id: actorId,
+        email: email,
+        display_name: displayName,
+      });
+
+    if (userError) {
+      console.error('Error syncing user:', userError);
+      return NextResponse.json({ error: 'Failed to sync user' }, { status: 500 });
+    }
+  }
+
   const { data, error } = await supabase
     .from('spots')
     .insert([
@@ -85,7 +123,7 @@ export async function POST(request: Request) {
         longitude,
         status: status || 'vacant',
         memo,
-        created_by: userId,
+        created_by: actorId,
         project_id,
       },
     ])
@@ -97,7 +135,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  const res = NextResponse.json(data);
+  if (shouldSetAnonCookie) {
+    res.cookies.set({
+      name: "hm_anon",
+      value: anonCookieValue,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return res;
 }
 
 export async function PUT(request: Request) {

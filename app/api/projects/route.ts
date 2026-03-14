@@ -4,7 +4,18 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 
 async function ensureUserRow(userId: string) {
   const user = await currentUser();
-  if (!user) return;
+  if (!user) {
+    const { error } = await supabase.from("users").upsert({
+      id: userId,
+      email: "",
+      display_name: "",
+    });
+    if (error) {
+      // Surface this as a hard error; without the user row, FK constraints will fail.
+      throw new Error(error.message);
+    }
+    return;
+  }
 
   const email = user.emailAddresses[0]?.emailAddress || "";
   const displayName = user.firstName
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, description, details, start_at, end_at, start_date, end_date, visibility } = body;
+  const { name, description, details, start_at, end_at, start_date, end_date, visibility, open_access } = body;
 
   if (!name) {
     return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
@@ -111,6 +122,7 @@ export async function POST(request: Request) {
         start_date: derivedStartDate || null,
         end_date: derivedEndDate || null,
         visibility: visibility || "private",
+        open_access: Boolean(open_access) && (visibility || "private") === "public",
         created_by: userId,
       },
     ])

@@ -35,6 +35,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ proj
     end_date,
     thumbnail_url,
     visibility,
+    open_access,
   } = body;
 
   const derivedStartDate =
@@ -55,6 +56,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ proj
       end_date: derivedEndDate,
       thumbnail_url,
       visibility,
+      open_access: Boolean(open_access) && (visibility ?? undefined) === "public",
     })
     .eq('id', projectId)
     .select()

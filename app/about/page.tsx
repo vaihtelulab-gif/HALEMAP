@@ -67,17 +67,36 @@ export default function AboutPage() {
               </p>
 
               <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                <SignUpButton mode="modal">
-                  <button className="px-5 py-3 rounded-md bg-teal-700 text-white hover:bg-teal-800 font-medium text-center">
-                    参加して整える
-                  </button>
-                </SignUpButton>
-                <Link
-                  href="/"
-                  className="px-5 py-3 rounded-md border border-teal-200 bg-white hover:bg-teal-50 font-medium text-center"
-                >
-                  すでに利用中（プロジェクトへ）
-                </Link>
+                {isLoaded && isSignedIn ? (
+                  <>
+                    <Link
+                      href="/home"
+                      className="px-5 py-3 rounded-md bg-teal-700 text-white hover:bg-teal-800 font-medium text-center"
+                    >
+                      プロジェクトへ
+                    </Link>
+                    <Link
+                      href="/discover"
+                      className="px-5 py-3 rounded-md border border-teal-200 bg-white hover:bg-teal-50 font-medium text-center"
+                    >
+                      プロジェクトを探す
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <SignUpButton mode="modal">
+                      <button className="px-5 py-3 rounded-md bg-teal-700 text-white hover:bg-teal-800 font-medium text-center">
+                        参加して整える
+                      </button>
+                    </SignUpButton>
+                    <Link
+                      href="/"
+                      className="px-5 py-3 rounded-md border border-teal-200 bg-white hover:bg-teal-50 font-medium text-center"
+                    >
+                      すでに利用中（プロジェクトへ）
+                    </Link>
+                  </>
+                )}
               </div>
 
               <div className="mt-6 text-sm text-gray-600">
@@ -93,12 +112,12 @@ export default function AboutPage() {
               <div className="rounded-3xl border border-teal-100 bg-white shadow-sm overflow-hidden">
                 <div className="aspect-[16/10] bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-6">
                   <div className="relative h-full w-full rounded-2xl border bg-white/70 backdrop-blur p-4 overflow-hidden">
-                    <div className="absolute inset-0 opacity-[0.18]">
+                    <div className="absolute inset-0 opacity-[0.18] pointer-events-none">
                       <div className="h-full w-full bg-[linear-gradient(to_right,#0f766e_1px,transparent_1px),linear-gradient(to_bottom,#0f766e_1px,transparent_1px)] bg-[size:28px_28px]" />
                     </div>
 
-                    <div className="absolute left-[14%] top-[22%] h-[55%] w-[60%] rounded-[36px] bg-teal-200/35 blur-2xl" />
-                    <div className="absolute left-[18%] top-[26%] h-[47%] w-[52%] rounded-[32px] bg-cyan-200/35 blur-xl" />
+                    <div className="absolute left-[14%] top-[22%] h-[55%] w-[60%] rounded-[36px] bg-teal-200/35 blur-2xl pointer-events-none" />
+                    <div className="absolute left-[18%] top-[26%] h-[47%] w-[52%] rounded-[32px] bg-cyan-200/35 blur-xl pointer-events-none" />
 
                     {[
                       { x: "28%", y: "34%" },
@@ -215,10 +234,10 @@ export default function AboutPage() {
             <div className="rounded-3xl border border-teal-100 bg-white shadow-sm overflow-hidden">
               <div className="aspect-[16/11] bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-6">
                 <div className="relative h-full w-full rounded-2xl border bg-white/70 backdrop-blur overflow-hidden">
-                  <div className="absolute inset-0 opacity-[0.16]">
+                  <div className="absolute inset-0 opacity-[0.16] pointer-events-none">
                     <div className="h-full w-full bg-[radial-gradient(circle_at_20%_20%,#14b8a633,transparent_55%),radial-gradient(circle_at_65%_35%,#2dd4bf33,transparent_55%),radial-gradient(circle_at_45%_70%,#14b8a626,transparent_60%)]" />
                   </div>
-                  <div className="absolute inset-0 opacity-[0.18]">
+                  <div className="absolute inset-0 opacity-[0.18] pointer-events-none">
                     <div className="h-full w-full bg-[linear-gradient(to_right,#0f766e_1px,transparent_1px),linear-gradient(to_bottom,#0f766e_1px,transparent_1px)] bg-[size:32px_32px]" />
                   </div>
 
